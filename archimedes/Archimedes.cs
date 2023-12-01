@@ -38,16 +38,80 @@ namespace archimedes
     }
     public class Archimedes : IOptimizationAlgorithm
     {
-        public string Name { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public ParamInfo[] ParamsInfo { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public string Name { get; set; }
+        public ParamInfo[] ParamsInfo { get ; set ; }
         public IStateWriter writer { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public IStateReader reader { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public IGenerateTextReport stringReportGenerator { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public IGeneratePDFReport pdfReportGenerator { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public double[] XBest { get ; set ; }
         public double FBest { get ; set; }
-        public int NumberOfEvaluationFitnessFunction { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public int NumberOfEvaluationFitnessFunction { get; set; }
+        static void fun_checkpositions(int dim, double[,] vec_pos, int var_no_group, double[] lb, double[] ub)
+        {
+            double[] Lb = new double[dim];
+            double[] Ub = new double[dim];
 
+            for (int i = 0; i < dim; i++)
+            {
+                Lb[i] = lb[i];
+                Ub[i] = ub[i];
+            }
+
+            for (int i = 0; i < var_no_group; i++)
+            {
+                for (int j = 0; j < dim; j++)
+                {
+                    if (vec_pos[i, j] < Lb[j])
+                    {
+                        vec_pos[i, j] = Lb[j];
+                    }
+                    else if (vec_pos[i, j] > Ub[j])
+                    {
+                        vec_pos[i, j] = Ub[j];
+                    }
+                }
+            }
+        }
+        static double Min(double[] array)
+        {
+            double min = array[0];
+            for (int i = 1; i < array.Length; i++)
+            {
+                if (array[i] < min)
+                {
+                    min = array[i];
+                }
+            }
+            return min;
+        }
+
+        static double Max(double[] array)
+        {
+            double max = array[0];
+            for (int i = 1; i < array.Length; i++)
+            {
+                if (array[i] > max)
+                {
+                    max = array[i];
+                }
+            }
+            return max;
+        }
+
+        static void ArrayMin(double[] array, out double min, out int minIndex)
+        {
+            min = array[0];
+            minIndex = 0;
+            for (int i = 1; i < array.Length; i++)
+            {
+                if (array[i] < min)
+                {
+                    min = array[i];
+                    minIndex = i;
+                }
+            }
+        }
         public void Solve(fitnessFunction f, double[,] domain, params double[] parameters)
         {
             //int Materials_no, int Max_iter, Func<double[], double> j, int dim, double[] lb, double[] ub, double C3, double C4,
@@ -146,7 +210,7 @@ namespace archimedes
                 {
                     for (int j = 0; j < dim; j++)
                     {
-                        if (TF < 0.5)
+                        if (TF < 0.4)
                         {
                             int mrand = rand.Next(Materials_no);
                             Xnew[i, j] = X[i, j] + C1 * rand.NextDouble() * acc_norm[i, j] * (X[mrand, j] - X[i, j]) * d;  // Eq. (13)
@@ -202,72 +266,8 @@ namespace archimedes
 
             }
             Console.WriteLine(string.Join("\n", Convergence_curve));
-            static double Min(double[] array)
-            {
-                double min = array[0];
-                for (int i = 1; i < array.Length; i++)
-                {
-                    if (array[i] < min)
-                    {
-                        min = array[i];
-                    }
-                }
-                return min;
+
+
             }
-
-            static double Max(double[] array)
-            {
-                double max = array[0];
-                for (int i = 1; i < array.Length; i++)
-                {
-                    if (array[i] > max)
-                    {
-                        max = array[i];
-                    }
-                }
-                return max;
-            }
-
-            static void ArrayMin(double[] array, out double min, out int minIndex)
-            {
-                min = array[0];
-                minIndex = 0;
-                for (int i = 1; i < array.Length; i++)
-                {
-                    if (array[i] < min)
-                    {
-                        min = array[i];
-                        minIndex = i;
-                    }
-                }
-            }
-
-            static void fun_checkpositions(int dim, double[,] vec_pos, int var_no_group, double[] lb, double[] ub)
-            {
-                double[] Lb = new double[dim];
-                double[] Ub = new double[dim];
-
-                for (int i = 0; i < dim; i++)
-                {
-                    Lb[i] = lb[i];
-                    Ub[i] = ub[i];
-                }
-
-                for (int i = 0; i < var_no_group; i++)
-                {
-                    for (int j = 0; j < dim; j++)
-                    {
-                        if (vec_pos[i, j] < Lb[j])
-                        {
-                            vec_pos[i, j] = Lb[j];
-                        }
-                        else if (vec_pos[i, j] > Ub[j])
-                        {
-                            vec_pos[i, j] = Ub[j];
-                        }
-                    }
-                }
-            }
-        }
     }
 }
