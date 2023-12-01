@@ -5,17 +5,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using System.Xml.Schema;
 
 namespace archimedes
 {
     public static class MyExtensions
     {
-        public static string Extend(this Array array)
-        {
-            return "Yes, you can extend an array";
-        }
-
-        public static T[] column<T>(this T[,] multidimArray, int wanted_column)
+        public static T[] Column<T>(this T[,] multidimArray, int wanted_column)
         {
             int l = multidimArray.GetLength(0);
             T[] columnArray = new T[l];
@@ -26,7 +22,7 @@ namespace archimedes
             return columnArray;
         }
 
-        public static T[] row<T>(this T[,] multidimArray, int wanted_row)
+        public static T[] Row<T>(this T[,] multidimArray, int wanted_row)
         {
             int l = multidimArray.GetLength(1);
             T[] rowArray = new T[l];
@@ -38,6 +34,7 @@ namespace archimedes
         }
 
 
+
     }
     public class Archimedes : IOptimizationAlgorithm
     {
@@ -47,8 +44,8 @@ namespace archimedes
         public IStateReader reader { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public IGenerateTextReport stringReportGenerator { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public IGeneratePDFReport pdfReportGenerator { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public double[] XBest { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public double FBest { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public double[] XBest { get ; set ; }
+        public double FBest { get ; set; }
         public int NumberOfEvaluationFitnessFunction { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         public void Solve(fitnessFunction f, double[,] domain, params double[] parameters)
@@ -56,8 +53,8 @@ namespace archimedes
             //int Materials_no, int Max_iter, Func<double[], double> j, int dim, double[] lb, double[] ub, double C3, double C4,
             //out double[] XBest, out double Scorebest, out double[] Convergence_curve)
             int Materials_no = (int)parameters[4];
-            int dim = (int)parameters[5];
-            int Max_iter= (int)parameters[6];
+            int dim = domain.GetLength(1);
+            int Max_iter= (int)parameters[5];
             // Initialization
             double C1 = parameters[0], C2 = parameters[1], C3 = parameters[2], C4 = parameters[3];
             double u = 0.9, l = 0.1;   // Parameters in Eq. (12)
@@ -65,22 +62,26 @@ namespace archimedes
             double[,] den = new double[Materials_no, dim];
             double[,] vol = new double[Materials_no, dim];
             double[,] acc = new double[Materials_no, dim];
-
-            Random rand = new Random();
+            double[] minmax = new double[dim];
+            for(int i =0; i< dim; i++)
+            {
+                minmax[i] = domain[1,i] - domain[0,i];
+            }
+            Random rand = new();
 
             for (int i = 0; i < Materials_no; i++)
             {
                 for (int j = 0; j < dim; j++)
                 {
-                    X[i, j] = domain[0,j] + rand.NextDouble() * (domain[1, j] - domain[0, j]); // Initial positions Eq. (4)
+                    X[i, j] = domain[0,j] + rand.NextDouble() * minmax[j]; // Initial positions Eq. (4)
                     den[i, j] = rand.NextDouble(); // Eq. (5)
                     vol[i, j] = rand.NextDouble();
-                    acc[i, j] = domain[0, j] + rand.NextDouble() * (domain[1, j] - domain[0, j]); // Eq. (6)
+                    acc[i, j] = domain[0,j] + rand.NextDouble() * minmax[j]; // Eq. (6)
                 }
             }
 
             double[] Y = new double[Materials_no];
-            double[] acc_norm = new double[Materials_no];
+            double[,] acc_norm = new double[Materials_no,dim];
 
             for (int i = 0; i < Materials_no; i++)
             {
@@ -92,18 +93,16 @@ namespace archimedes
                 Y[i] = f(X_row);
             }
 
-            double[] ScorebestArray;
-            int Score_index;
-            ArrayMin(Y, out ScorebestArray, out Score_index);
-            FBest = ScorebestArray[0];
+            ArrayMin(Y, out double Scorebest, out int Score_index);
+            FBest = Scorebest;
             XBest = new double[dim];
-            Array.Copy(X.row(Score_index), XBest, dim);
+            Array.Copy(X.Row(Score_index), XBest, dim);
             double[] den_best = new double[dim];
             double[] vol_best = new double[dim];
             double[] acc_best = new double[dim];
-            Array.Copy(den.row(Score_index), den_best, dim);
-            Array.Copy(vol.row(Score_index), vol_best, dim);
-            Array.Copy(acc.row(Score_index), acc_best, dim);
+            Array.Copy(den.Row(Score_index), den_best, dim);
+            Array.Copy(vol.Row(Score_index), vol_best, dim);
+            Array.Copy(acc.Row(Score_index), acc_best, dim);
             Array.Copy(acc, acc_norm, Materials_no * dim);
 
              double[] Convergence_curve = new double[Max_iter];
@@ -120,10 +119,14 @@ namespace archimedes
                 double r = rand.NextDouble();
                 for (int i = 0; i < Materials_no; i++)
                 {
-                    for (int j = 0; j < dim; j++)
+                    for (int j = 0; j < dim; j++)//row update
                     {
                         den[i, j] = den[i, j] + r * (den_best[j] - den[i, j]);   // Eq. (7)
                         vol[i, j] = vol[i, j] + r * (vol_best[j] - vol[i, j]);
+
+                    }
+                    for (int j = 0; j < dim; j++)
+                    {
                         double[] acc_temp = new double[dim];
                         if (TF < 0.45) // collision
                         {
@@ -134,7 +137,7 @@ namespace archimedes
                         {
                             acc_temp[j] = (den_best[j] + (vol_best[j] * acc_best[j])) / (rand.NextDouble() * den[i, j] * vol[i, j]);   // Eq. (11)
                         }
-                        acc_norm[j] = ((u * (acc_temp[j] - Min(acc_temp))) / (Max(acc_temp) - Min(acc_temp))) + l;   // Eq. (12)
+                        acc_norm[i, j] = ((u * (acc_temp[j] - Min(acc_temp))) / (Max(acc_temp) - Min(acc_temp))) + l;   // Eq. (12)
                     }
                 }
 
@@ -146,7 +149,7 @@ namespace archimedes
                         if (TF < 0.5)
                         {
                             int mrand = rand.Next(Materials_no);
-                            Xnew[i, j] = X[i, j] + C1 * rand.NextDouble() * acc_norm[ j] * (X[mrand, j] - X[i, j]) * d;  // Eq. (13)
+                            Xnew[i, j] = X[i, j] + C1 * rand.NextDouble() * acc_norm[i, j] * (X[mrand, j] - X[i, j]) * d;  // Eq. (13)
                         }
                         else
                         {
@@ -156,21 +159,21 @@ namespace archimedes
                                 T = 1;
                             if (p <= 0.5)
                             {
-                                Xnew[i, j] = XBest[j] + C2 * rand.NextDouble() * acc_norm[ j] * (T * XBest[j] - X[i, j]) * d;  // Eq. (14)
+                                Xnew[i, j] = XBest[j] + C2 * rand.NextDouble() * acc_norm[i, j] * (T * XBest[j] - X[i, j]) * d;  // Eq. (14)
                             }
                             else
                             {
-                                Xnew[i, j] = XBest[j] - C2 * rand.NextDouble() * acc_norm[j] * (T * XBest[j] - X[i, j]) * d;
+                                Xnew[i, j] = XBest[j] - C2 * rand.NextDouble() * acc_norm[i, j] * (T * XBest[j] - X[i, j]) * d;
                             }
                         }
                     }
                 }
 
-                fun_checkpositions(dim, Xnew, Materials_no, domain.row(0), domain.row(1));
+                fun_checkpositions(dim, Xnew, Materials_no, domain.Row(0), domain.Row(1));
 
                 for (int i = 0; i < Materials_no; i++)
                 {
-                    double v = f(Xnew.row(i));
+                    double v = f(Xnew.Row(i));
                     if (v < Y[i])
                     {
                         for (int j = 0; j < dim; j++)
@@ -181,24 +184,24 @@ namespace archimedes
                     }
                 }
 
-                double[] var_YbestArray;
-                int var_index;
-                ArrayMin(Y, out var_YbestArray, out var_index);
-                double var_Ybest = var_YbestArray[0];
-                Convergence_curve[t] = var_Ybest;
+                ArrayMin(Y, out double Ybest, out int var_index);
+                Convergence_curve[t] = Ybest;
 
-                if (var_Ybest < FBest)
+                if (Ybest < FBest)
                 {
-                    FBest = var_Ybest;
+                    FBest = Ybest;
                     Score_index = var_index;
-                    Array.Copy(X.row(Score_index), XBest, dim);
-                    Array.Copy(den.row(Score_index), den_best, dim);
-                    Array.Copy(vol.row(Score_index), vol_best, dim);
-                    Array.Copy(acc_norm, acc_best, dim);
+                    Array.Copy(X.Row(Score_index), XBest, dim);
+                    Array.Copy(den.Row(Score_index), den_best, dim);
+                    Array.Copy(vol.Row(Score_index), vol_best, dim);
+                    Array.Copy(acc_norm.Row(Score_index), acc_best, dim);
                 }
+                
+                // TODO: Writer()
+
 
             }
-
+            Console.WriteLine(string.Join("\n", Convergence_curve));
             static double Min(double[] array)
             {
                 double min = array[0];
@@ -225,9 +228,9 @@ namespace archimedes
                 return max;
             }
 
-            static void ArrayMin(double[] array, out double[] minArray, out int minIndex)
+            static void ArrayMin(double[] array, out double min, out int minIndex)
             {
-                double min = array[0];
+                min = array[0];
                 minIndex = 0;
                 for (int i = 1; i < array.Length; i++)
                 {
@@ -237,7 +240,6 @@ namespace archimedes
                         minIndex = i;
                     }
                 }
-                minArray = new double[] { min, minIndex };
             }
 
             static void fun_checkpositions(int dim, double[,] vec_pos, int var_no_group, double[] lb, double[] ub)
