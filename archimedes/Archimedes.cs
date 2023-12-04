@@ -112,6 +112,23 @@ namespace archimedes
                 }
             }
         }
+        static void Writer(double[,] population, double[,] den, double[,] vol,/*double[,] acc*/double[,] domain, double[] parameters,int current_iter)
+        {
+            String file_text = "";
+            String file_name = current_iter.ToString()+".txt";
+            file_text += String.Join(", ", parameters)+"\n";
+            file_text += current_iter.ToString()+"\n";
+            file_text += String.Join(", ", domain.Row(0)) + "\n";
+            file_text += String.Join(", ", domain.Row(1)) + "\n";
+            for(int i = 0; i < population.GetLength(0); i++)
+            {
+                file_text += String.Join(", ", population.Row(i))+"\n";
+                file_text += String.Join(", ", den.Row(i)) + "\n";
+                file_text += String.Join(", ", vol.Row(i)) + "\n";
+            }
+            Console.WriteLine(file_text);
+        }
+
         public void Solve(fitnessFunction f, double[,] domain, params double[] parameters)
         {
             //int Materials_no, int Max_iter, Func<double[], double> j, int dim, double[] lb, double[] ub, double C3, double C4,
@@ -260,7 +277,7 @@ namespace archimedes
                     Array.Copy(vol.Row(Score_index), vol_best, dim);
                     Array.Copy(acc_norm.Row(Score_index), acc_best, dim);
                 }
-                
+                Writer(Xnew, den, vol, domain, parameters,t);
                 // TODO: Writer()
 
 
