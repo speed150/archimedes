@@ -8,6 +8,11 @@ using System.Threading.Tasks;
 namespace archimedes.@interface
 {
 
+    public interface FitnesFunction
+    {
+        string Name { get; set; }
+        double Function(params double[] args);
+    }
     public interface IStateWriter
     {
         void SaveToFileStateOfAlgorythm(string path, IOptimizationAlgorithm algorythm);
@@ -57,7 +62,7 @@ namespace archimedes.@interface
         // list ę pozosta łych wymaganych parametr ów algorytmu ( tylko warto ści , w kolejno
 
         // Po wykonaniu ustawia odpowiednie właś ciwo ści: XBest , Fbest ,NumberOfEvaluationFitnessFunction
-        void Solve(fitnessFunction f, double[,] domain, params double[] parameters);
+        void Solve(FitnesFunction f, double[,] domain, params double[] parameters);
 
         // Lista informacji o kolejnych parametrach algorytmu
         ParamInfo[] ParamsInfo { get; set; }

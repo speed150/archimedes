@@ -1,8 +1,13 @@
 ﻿using archimedes.@interface;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using System.Xml.Schema;
@@ -38,14 +43,14 @@ namespace archimedes
     }
     public class Archimedes : IOptimizationAlgorithm
     {
-        public string Name { get; set; }
-        public ParamInfo[] ParamsInfo { get ; set ; }
+        public string Name { get; set; } = "ArchimedesOptymalizationAlgortyhm";
+        public ParamInfo[] ParamsInfo { get; set; }
         public IStateWriter writer { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public IStateReader reader { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public IGenerateTextReport stringReportGenerator { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public IGeneratePDFReport pdfReportGenerator { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public double[] XBest { get ; set ; }
-        public double FBest { get ; set; }
+        public double[] XBest { get; set; }
+        public double FBest { get; set; }
         public int NumberOfEvaluationFitnessFunction { get; set; }
         static void fun_checkpositions(int dim, double[,] vec_pos, int var_no_group, double[] lb, double[] ub)
         {
@@ -112,30 +117,77 @@ namespace archimedes
                 }
             }
         }
-        static void Writer(double[,] population, double[,] den, double[,] vol,/*double[,] acc*/double[,] domain, double[] parameters,int current_iter)
+        
+        static string ReturnJsonRow(double[] row)
         {
-            String file_text = "";
-            String file_name = current_iter.ToString()+".txt";
-            file_text += String.Join(", ", parameters)+"\n";
-            file_text += current_iter.ToString()+"\n";
-            file_text += String.Join(", ", domain.Row(0)) + "\n";
-            file_text += String.Join(", ", domain.Row(1)) + "\n";
-            for(int i = 0; i < population.GetLength(0); i++)
-            {
-                file_text += String.Join(", ", population.Row(i))+"\n";
-                file_text += String.Join(", ", den.Row(i)) + "\n";
-                file_text += String.Join(", ", vol.Row(i)) + "\n";
-            }
-            Console.WriteLine(file_text);
+            string[] formated;
+            formated = Array.ConvertAll(row, x => x.ToString(CultureInfo.InvariantCulture));
+            return  "[" + String.Join(", ", formated) + "]\n,";
         }
 
-        public void Solve(fitnessFunction f, double[,] domain, params double[] parameters)
+        static void Writer(double[,] population,double[] Y, double[,] den, double[,] vol,/*double[,] acc*/double[,] domain, double[] parameters, int current_iter, string name,string fname)
+        {
+            String file_text = "{\n";
+            String file_name =@"..\..\..\Data\"+ name +fname+ current_iter.ToString() + ".json";
+            string[] formated;
+            file_text += "\"parameters\":";
+            file_text += ReturnJsonRow(parameters);
+            file_text += "\"current_iter\":" + current_iter + ",";
+            file_text += "\"domain\":[";
+            file_text += ReturnJsonRow(domain.Row(0));
+            file_text += ReturnJsonRow(domain.Row(1));
+
+            file_text = file_text.Remove(file_text.Length-1,1)+"],";
+            //file_text += current_iter.ToString() + "\n";
+            file_text += "\"result\":"+ReturnJsonRow(Y);
+                
+            file_text += "\"population\":[";
+            for (int i = 0; i < population.GetLength(0); i++)
+            {
+                file_text += ReturnJsonRow(population.Row(i));
+              }
+            file_text = file_text.Remove(file_text.Length - 1, 1) + "],";
+
+            file_text += "\"den\":[";
+            for (int i = 0; i < den.GetLength(0); i++)
+            {
+                file_text += ReturnJsonRow(den.Row(i));
+
+            }
+            file_text = file_text.Remove(file_text.Length - 1, 1) + "],";
+
+            file_text += "\"vol\":[";
+            for (int i = 0; i < vol.GetLength(0); i++)
+            {
+                file_text += ReturnJsonRow(vol.Row(i));
+
+            }
+            file_text = file_text.Remove(file_text.Length - 1, 1) + "]";
+
+
+            file_text += "}";
+            File.WriteAllText(file_name,file_text);
+        }
+        static void Reader(string name)
+        {
+            string file = File.ReadAllText(name);
+            JObject data = (JObject)JsonConvert.DeserializeObject(file);
+            JArray? jArray = data["population"] as JArray;
+            double[,]? population = jArray.ToObject<double[,]>();
+            Console.WriteLine(String.Join(", ", population.Row(0)));
+
+        }
+
+
+        public void Solve(FitnesFunction F, double[,] domain, params double[] parameters)
         {
             //int Materials_no, int Max_iter, Func<double[], double> j, int dim, double[] lb, double[] ub, double C3, double C4,
             //out double[] XBest, out double Scorebest, out double[] Convergence_curve)
+            
+            fitnessFunction f = F.Function;
             int Materials_no = (int)parameters[4];
             int dim = domain.GetLength(1);
-            int Max_iter= (int)parameters[5];
+            int Max_iter = (int)parameters[5];
             // Initialization
             double C1 = parameters[0], C2 = parameters[1], C3 = parameters[2], C4 = parameters[3];
             double u = 0.9, l = 0.1;   // Parameters in Eq. (12)
@@ -144,9 +196,9 @@ namespace archimedes
             double[,] vol = new double[Materials_no, dim];
             double[,] acc = new double[Materials_no, dim];
             double[] minmax = new double[dim];
-            for(int i =0; i< dim; i++)
+            for (int i = 0; i < dim; i++)
             {
-                minmax[i] = domain[1,i] - domain[0,i];
+                minmax[i] = domain[1, i] - domain[0, i];
             }
             Random rand = new();
 
@@ -154,15 +206,15 @@ namespace archimedes
             {
                 for (int j = 0; j < dim; j++)
                 {
-                    X[i, j] = domain[0,j] + rand.NextDouble() * minmax[j]; // Initial positions Eq. (4)
+                    X[i, j] = domain[0, j] + rand.NextDouble() * minmax[j]; // Initial positions Eq. (4)
                     den[i, j] = rand.NextDouble(); // Eq. (5)
                     vol[i, j] = rand.NextDouble();
-                    acc[i, j] = domain[0,j] + rand.NextDouble() * minmax[j]; // Eq. (6)
+                    acc[i, j] = domain[0, j] + rand.NextDouble() * minmax[j]; // Eq. (6)
                 }
             }
 
             double[] Y = new double[Materials_no];
-            double[,] acc_norm = new double[Materials_no,dim];
+            double[,] acc_norm = new double[Materials_no, dim];
 
             for (int i = 0; i < Materials_no; i++)
             {
@@ -186,7 +238,7 @@ namespace archimedes
             Array.Copy(acc.Row(Score_index), acc_best, dim);
             Array.Copy(acc, acc_norm, Materials_no * dim);
 
-             double[] Convergence_curve = new double[Max_iter];
+            double[] Convergence_curve = new double[Max_iter];
 
             for (int t = 0; t < Max_iter; t++)
             {
@@ -277,14 +329,18 @@ namespace archimedes
                     Array.Copy(vol.Row(Score_index), vol_best, dim);
                     Array.Copy(acc_norm.Row(Score_index), acc_best, dim);
                 }
-                Writer(Xnew, den, vol, domain, parameters,t);
+                Writer(Xnew,Y, den, vol, domain, parameters, t, Name,F.Name);
                 // TODO: Writer()
 
 
             }
-            Console.WriteLine(string.Join("\n", Convergence_curve));
+
+            DirectoryInfo directory = new DirectoryInfo(@"..\..\..\Data");
+            FileInfo[] Files = directory.GetFiles("*.json");
+            
+            Reader(Files[9].FullName);
 
 
-            }
+        }
     }
 }

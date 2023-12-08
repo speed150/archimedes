@@ -1,16 +1,21 @@
-﻿using System;
+﻿using archimedes.@interface;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace archimedes.Funkcje
+namespace archimedes
 {
-    internal class FitnesFunction
+    public  class FitnesFunction_Sphere: FitnesFunction
     {
-        public string Name { get; set; } = "sphere";
-        public double function(params double[] args) 
-        {
+
+        string FitnesFunction.Name { get; set; } = "sphere";
+
+      
+
+        double FitnesFunction.Function(params double[] args)
+        {  
             double result = 0.0;
             foreach (var arg in args)
             {
@@ -18,5 +23,7 @@ namespace archimedes.Funkcje
             }
             return result;
         }
+          
+        
     }
 }
