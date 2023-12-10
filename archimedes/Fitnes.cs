@@ -7,23 +7,22 @@ using System.Threading.Tasks;
 
 namespace archimedes
 {
-    public  class FitnesFunction_Sphere: FitnesFunction
+    public class FitnesFunction_Sphere : FitnesFunction
     {
 
-        string FitnesFunction.Name { get; set; } = "sphere";
+        public string Name { get; set; } = "sphere";
 
-      
 
-        double FitnesFunction.Function(params double[] args)
-        {  
+
+        public double Function(params double[] args)
+        {
             double result = 0.0;
             foreach (var arg in args)
             {
-                result += arg*arg;
+                result += arg * arg;
             }
             return result;
-        }
-          
         
+        }
     }
 }

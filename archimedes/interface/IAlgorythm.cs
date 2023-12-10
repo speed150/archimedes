@@ -10,8 +10,8 @@ namespace archimedes.@interface
 
     public interface FitnesFunction
     {
-        string Name { get; set; }
-        double Function(params double[] args);
+        public string Name { get; set; }
+        public double Function(params double[] args);
     }
     public interface IStateWriter
     {
