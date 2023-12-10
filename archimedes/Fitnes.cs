@@ -25,4 +25,15 @@ namespace archimedes
         
         }
     }
+    public class FitnesFunction_Rastrigin: FitnesFunction
+    {
+        public string Name { get; set; } = "Rastrigin";
+        public double Function(params double[] args) { 
+        double result = 10.0* args.Length;
+            foreach (var arg in args) {
+                result += (arg * arg) - 10 * Math.Cos(2.0 * Math.PI * arg);
+            }
+            return result;
+        }
+    }
 }

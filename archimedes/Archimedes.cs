@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net.Http.Json;
+using System.Numerics;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
@@ -170,12 +171,29 @@ namespace archimedes
         }
         static void Reader(string name)
         {
+            //double[,] population,
+            //double[] Y,
+            //double[,] den,
+            //double[,] vol,
+            //double[,] domain,
+            //double[] parameters,
+            //int current_iter,
+            //string name,
+            //string fname)
             string file = File.ReadAllText(name);
             JObject data = (JObject)JsonConvert.DeserializeObject(file);
             JArray? jArray = data["population"] as JArray;
             double[,]? population = jArray.ToObject<double[,]>();
-            Console.WriteLine(String.Join(", ", population.Row(0)));
-
+            jArray = data["result"] as JArray;
+            double[]? Y = jArray.ToObject<double[]>();
+            jArray = data["den"] as JArray ;
+            double[,]? den = jArray.ToObject<double[,]>();
+            jArray = data["vol"] as JArray;
+            double[,]? vol = jArray.ToObject<double[,]>();
+            jArray = data["domain"] as JArray;
+            double[,]? domain = jArray.ToObject<double[,]>();
+            int current_iter =(int) data.GetValue("current_iter");
+            Console.WriteLine(current_iter);   
         }
 
 
@@ -330,7 +348,6 @@ namespace archimedes
                     Array.Copy(acc_norm.Row(Score_index), acc_best, dim);
                 }
                 Writer(Xnew,Y, den, vol, domain, parameters, t, Name,F.Name);
-                // TODO: Writer()
 
 
             }
